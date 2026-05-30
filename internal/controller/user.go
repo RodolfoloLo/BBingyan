@@ -1,0 +1,119 @@
+package controller
+
+import (
+	"errors"
+
+	"BBingyan/internal/config"
+	"BBingyan/internal/controller/param"
+	"BBingyan/internal/model"
+	"BBingyan/internal/utils"
+
+	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
+func Register(c echo.Context) error {
+	var req RegisterRequest
+	if err := c.Bind(&req); err != nil {
+		return param.BadRequest(c, "")
+	}
+
+	code := c.QueryParam("code")
+	valid, err := utils.ValidateCode(c.Request().Context(), req.Email, code)
+	if err != nil || !valid {
+		return param.Unauthorized(c, "invalid code")
+	}
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	user := &model.User{
+		Username: req.Username,
+		Password: string(hash),
+		Email:    req.Email,
+	}
+	if err := model.CreateUser(c.Request().Context(), user); err != nil {
+		if errors.Is(err, model.ErrUserAlreadyExist) {
+			return param.Conflict(c, "username taken")
+		}
+		return param.InternalError(c, "")
+	}
+	return param.Success(c, nil)
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func Login(c echo.Context) error {
+	var req LoginRequest
+	if err := c.Bind(&req); err != nil {
+		return param.BadRequest(c, "")
+	}
+
+	user, err := model.GetUserByUsername(c.Request().Context(), req.Username)
+	if errors.Is(err, model.ErrUserNotFound) {
+		return param.Unauthorized(c, "wrong username or password")
+	}
+	if err != nil {
+		return param.InternalError(c, "")
+	}
+
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)) != nil {
+		return param.Unauthorized(c, "wrong username or password")
+	}
+
+	token, _ := utils.GenerateToken(user.ID, user.Permission)
+	return param.Success(c, map[string]any{
+		"token":      token,
+		"expires_in": config.Conf.Jwt.Expire,
+	})
+}
+
+func GetUser(c echo.Context) error {
+	var req struct {
+		ID       int    `query:"id"`
+		Username string `query:"username"`
+	}
+	c.Bind(&req)
+
+	var user *model.User
+	var err error
+	switch {
+	case req.ID != 0:
+		user, err = model.GetUserByID(c.Request().Context(), req.ID)
+	case req.Username != "":
+		user, err = model.GetUserByUsername(c.Request().Context(), req.Username)
+	default:
+		user, err = model.GetUserByID(c.Request().Context(), utils.GetUID(c))
+	}
+	if errors.Is(err, model.ErrUserNotFound) {
+		return param.NotFound(c, "")
+	}
+	if err != nil {
+		return param.InternalError(c, "")
+	}
+	return param.Success(c, user)
+}
+
+func DeleteUser(c echo.Context) error {
+	if utils.GetPermission(c) < 1 {
+		return param.Forbidden(c, "admin only")
+	}
+	var req struct {
+		ID int `query:"id"`
+	}
+	c.Bind(&req)
+	if err := model.DeleteUser(c.Request().Context(), req.ID); err != nil {
+		if errors.Is(err, model.ErrUserNotFound) {
+			return param.NotFound(c, "")
+		}
+		return param.InternalError(c, "")
+	}
+	return param.Success(c, nil)
+}
