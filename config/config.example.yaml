@@ -1,0 +1,46 @@
+# ========== JWT 配置 ==========
+jwt:
+  secret: "change-me-to-a-random-string"   # JWT 签名密钥（生产环境用长随机串）
+  expire: 3600                             # Token 过期时间（秒），1小时
+  skippedPaths:                            # 不需要 JWT 验证的路径
+    - /v1/user/token
+    - /v1/verify
+
+# ========== 服务器配置 ==========
+server:
+  port: "8080"   # 监听端口
+  ver: "v1"      # API 版本前缀，方便后续升级到 v2
+
+# ========== 管理员配置 ==========
+admin:
+  username: "admin"
+  password: "admin123"   # 首次启动自动创建，上线后务必修改
+
+# ========== PostgreSQL 配置 ==========
+postgres:
+  dsn: "host=localhost user=postgres password=postgres dbname=bbs port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+# ========== 邮件配置（SMTP） ==========
+mail:
+  host: "smtp.qq.com"         # SMTP 服务器地址
+  port: "587"                 # SMTP 端口（587 是 STARTTLS）
+  username: "your@qq.com"     # 发件邮箱
+  password: "your-auth-code"  # SMTP 授权码（不是邮箱密码！）
+  nickname: "BBingyan"        # 发件人昵称
+
+# ========== 验证码配置 ==========
+captcha:
+  expire: 300   # 验证码有效期（秒），5分钟
+  resend: 60    # 重发间隔（秒），1分钟
+  title: "BBingyan 邮箱验证码"
+
+# ========== Redis 配置 ==========
+redis:
+  host: "localhost:6379"
+  password: ""
+  db: 0
+
+# ========== 日志配置 ==========
+logging:
+  debug: true           # true = 开发模式（详细日志），false = 生产模式（JSON 格式）
+  path: "logs/"         # 日志文件目录
