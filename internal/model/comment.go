@@ -32,6 +32,15 @@ func CreateComment(ctx context.Context, comment *Comment) error {
 	return tx.Commit().Error
 }
 
+func GetCommentByCID(ctx context.Context, cid int) (*Comment, error) {
+	var comment Comment
+	result := DB.WithContext(ctx).Where("cid = ?", cid).First(&comment)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &comment, nil
+}
+
 func ListCommentsByPID(ctx context.Context, pid int) ([]Comment, error) {
 	var comments []Comment
 	result := DB.WithContext(ctx).Where("pid = ?", pid).Order("created_at asc").Find(&comments)
