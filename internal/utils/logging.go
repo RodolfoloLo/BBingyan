@@ -6,46 +6,71 @@ import (
 
 	"BBingyan/internal/config"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-var Logger *zap.Logger // 全局日志记录器
+var Logger *zap.Logger
 
-func InitLogger() {
-	// 根据配置选择开发/生产模式
-	var zapConfig zap.Config
+func InitLogger(e *echo.Echo) {
+	// 根据 debug 配置决定编码器：开发用 console（可读），生产用 JSON
+	var encoder zapcore.Encoder
+	encoderConfig := zap.NewDevelopmentEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
 	if config.Conf.Logger.Debug {
-		zapConfig = zap.NewDevelopmentConfig()
+		encoder = zapcore.NewConsoleEncoder(encoderConfig)
 	} else {
-		zapConfig = zap.NewProductionConfig()
+		prodConfig := zap.NewProductionEncoderConfig()
+		prodConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		encoder = zapcore.NewJSONEncoder(prodConfig)
 	}
 
-	// 日志分割配置
-	// rotatelogs 会自动按时间切割日志文件
-	writer, err := rotatelogs.New(
-		config.Conf.Logger.Path+"%Y%m%d%H%M.log",
-		rotatelogs.WithLinkName(config.Conf.Logger.Path+"latest.log"), // 软链接指向最新日志
-		rotatelogs.WithMaxAge(7*24*time.Hour),                         // 日志保留 7 天
-		rotatelogs.WithRotationTime(24*time.Hour),                     // 每 24 小时切割一次
+	// 文件输出 — rotatelogs 按天切割，保留 7 天
+	fileWriter, err := rotatelogs.New(
+		config.Conf.Logger.Path+"%Y%m%d.log",
+		rotatelogs.WithLinkName(config.Conf.Logger.Path+"latest.log"),
+		rotatelogs.WithMaxAge(7*24*time.Hour),
+		rotatelogs.WithRotationTime(24*time.Hour),
 	)
+
+	var core zapcore.Core
 	if err != nil {
-		panic("failed to init log rotatelogs: " + err.Error())
+		// 文件日志不可用就降级，只输出到终端
+		core = zapcore.NewCore(encoder, zapcore.AddSync(os.Stdout), zapcore.DebugLevel)
+		Logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+		Logger.Warn("rotatelogs failed, using stdout only", zap.Error(err))
+	} else {
+		level := zapcore.InfoLevel
+		if config.Conf.Logger.Debug {
+			level = zapcore.DebugLevel
+		}
+		core = zapcore.NewCore(encoder, zapcore.NewMultiWriteSyncer(
+			zapcore.AddSync(fileWriter),
+			zapcore.AddSync(os.Stdout),
+		), level)
+		Logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	}
 
-	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder // 使用 ISO8601 时间格式
+	Logger.Info("logger ready")
 
-	level := zap.InfoLevel
-	if config.Conf.Logger.Debug {
-		level = zap.DebugLevel
-	}
-	core := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zapConfig.EncoderConfig),
-		zapcore.NewMultiWriteSyncer(zapcore.AddSync(writer), zapcore.AddSync(os.Stdout)),
-		level, // ← 生产环境用 Info，开发环境用 Debug
-	)
-
-	Logger = zap.New(core)
-	Logger.Info("logger initialized successfully")
+	// HTTP 请求日志中间件
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:      true,
+		LogStatus:   true,
+		LogMethod:   true,
+		LogRemoteIP: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			Logger.Info("request",
+				zap.String("method", v.Method),
+				zap.String("uri", v.URI),
+				zap.Int("status", v.Status),
+				zap.String("ip", v.RemoteIP),
+			)
+			return nil
+		},
+	}))
 }
