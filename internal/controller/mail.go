@@ -27,9 +27,13 @@ func SendValidation(c echo.Context) error {
 	if err := utils.SetCode(c.Request().Context(), email, code); err != nil {
 		return param.InternalError(c, "")
 	}
-	if err := service.SendValidationCode(email, code); err != nil {
-		utils.Logger.Error("send email failed", zap.String("to", email), zap.Error(err))
-		return param.InternalError(c, "email send failed")
-	}
+
+	// 异步发邮件，不阻塞 HTTP 响应
+	go func() {
+		if err := service.SendValidationCode(email, code); err != nil {
+			utils.Logger.Error("send email failed", zap.String("to", email), zap.Error(err))
+		}
+	}()
+
 	return param.Success(c, nil)
 }
