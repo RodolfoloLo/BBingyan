@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"BBingyan/internal/config"
 
 	"gorm.io/driver/postgres"
@@ -25,4 +27,9 @@ func InitDB() {
 			panic("auto migrate: " + err.Error())
 		}
 	}
+
+	sqlDB, _ := DB.DB()
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 }
