@@ -1,6 +1,9 @@
 package config
 
 import (
+	"errors"
+	"os"
+
 	"github.com/spf13/viper"
 )
 
@@ -63,13 +66,41 @@ type LoggerConfig struct {
 var Conf *Config
 
 func InitConfig() {
-	viper.SetConfigFile("config/config.yaml") // 告诉 Viper 去哪找文件
+	path := os.Getenv("CONFIG_PATH")
+	if path == "" {
+		path = "config/config.yaml"
+	}
+
+	viper.SetConfigFile(path)
+	viper.AutomaticEnv()
+
 	if err := viper.ReadInConfig(); err != nil {
-		panic("读取配置文件失败: " + err.Error())
+		panic("read config failed: " + err.Error())
 	}
 
 	Conf = &Config{}
 	if err := viper.Unmarshal(Conf); err != nil {
-		panic("解析配置到结构体失败: " + err.Error())
+		panic("unmarshal config failed: " + err.Error())
 	}
+
+	if err := validate(); err != nil {
+		panic("config invalid: " + err.Error())
+	}
+}
+
+// 新增的配置验证函数，确保关键配置项被正确设置
+func validate() error {
+	if Conf.Jwt.Secret == "" || Conf.Jwt.Secret == "change-me-to-a-random-string" {
+		return errors.New("jwt.secret 未设置或仍为默认值")
+	}
+	if Conf.DB.Dsn == "" {
+		return errors.New("postgres.dsn 未设置")
+	}
+	if Conf.Mail.Host == "" {
+		return errors.New("mail.host 未设置")
+	}
+	if Conf.Redis.Host == "" {
+		return errors.New("redis.host 未设置")
+	}
+	return nil
 }
