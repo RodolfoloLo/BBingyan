@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
-	"BBingyan/config"
+	"BBingyan/internal/config"
 	"BBingyan/internal/model"
 	"BBingyan/internal/router"
 	"BBingyan/internal/utils"
