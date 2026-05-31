@@ -19,7 +19,7 @@ type Post struct {
 	Comments  int       `json:"comments"  gorm:"default:0"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Content   *string   `json:"content,omitempty" gorm:"-"`
+	Content   *string   `json:"content,omitempty" gorm:"-"` // 不存 DB，查询时从 Body 表填充
 }
 
 type Body struct {
