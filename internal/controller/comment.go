@@ -51,7 +51,16 @@ func DeleteComment(c echo.Context) error {
 		return param.BadRequest(c, "cid required")
 	}
 
-	// 需要在 model 层查一次拿到 UID 来验归属，DeleteComment 内部会查一次
+	comment, err := model.GetCommentByCID(c.Request().Context(), req.CID)
+	if err != nil {
+		return param.NotFound(c, "")
+	}
+
+	uid := utils.GetUID(c)
+	if utils.GetPermission(c) < 1 && comment.UID != uid {
+		return param.Forbidden(c, "not your comment")
+	}
+
 	if err := model.DeleteComment(c.Request().Context(), req.CID); err != nil {
 		return param.InternalError(c, "")
 	}
