@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"time"
 
 	"BBingyan/internal/config"
@@ -42,10 +43,15 @@ func InitJWT(e *echo.Echo) {
 		SigningKey:  []byte(config.Conf.Jwt.Secret),
 		TokenLookup: "header:Authorization:Bearer ",
 		Skipper: func(c echo.Context) bool {
+			path := c.Path()
 			for _, p := range config.Conf.Jwt.SkippedPaths {
-				if c.Path() == p {
+				if path == p {
 					return true
 				}
+			}
+			// Registration endpoint is open
+			if c.Request().Method == "POST" && path == fmt.Sprintf("/%s/user", config.Conf.Server.Ver) {
+				return true
 			}
 			return false
 		},

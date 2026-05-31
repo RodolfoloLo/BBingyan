@@ -2,7 +2,6 @@ package service
 
 import (
 	"bytes"
-	"embed"
 	"html/template"
 	"net/smtp"
 	"strconv"
@@ -10,13 +9,23 @@ import (
 	"BBingyan/internal/config"
 )
 
-//go:embed../../templates/*.html
-var templateFS embed.FS
+const captchaHTML = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+  <h2>BBingyan 邮箱验证码</h2>
+  <p>您的验证码是：</p>
+  <p style="font-size: 32px; font-weight: bold; color: #4A90D9; letter-spacing: 8px;">{{.Code}}</p>
+  <p>有效期 {{.Expire}} 秒，请勿泄露给他人。</p>
+  <hr>
+  <p style="color: #999; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>
+</body>
+</html>`
 
 var captchaTmpl *template.Template
 
 func init() {
-	captchaTmpl = template.Must(template.ParseFS(templateFS, "templates/captcha.html"))
+	captchaTmpl = template.Must(template.New("captcha").Parse(captchaHTML))
 }
 
 func SendValidationCode(email, code string) error {
