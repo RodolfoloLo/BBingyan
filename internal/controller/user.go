@@ -8,7 +8,10 @@ import (
 	"BBingyan/internal/model"
 	"BBingyan/internal/utils"
 
+	"net/mail"
+
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -24,13 +27,22 @@ func Register(c echo.Context) error {
 		return param.BadRequest(c, "")
 	}
 
+	// 验证邮箱格式
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return param.BadRequest(c, "invalid email")
+	}
+
 	code := c.QueryParam("code")
 	valid, err := utils.ValidateCode(c.Request().Context(), req.Email, code)
 	if err != nil || !valid {
 		return param.Unauthorized(c, "invalid code")
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.Logger.Error("bcrypt failed", zap.Error(err))
+		return param.InternalError(c, "")
+	}
 	user := &model.User{
 		Username: req.Username,
 		Password: string(hash),
@@ -68,7 +80,11 @@ func Login(c echo.Context) error {
 		return param.Unauthorized(c, "wrong username or password")
 	}
 
-	token, _ := utils.GenerateToken(user.ID, user.Permission)
+	token, err := utils.GenerateToken(user.ID, user.Permission)
+	if err != nil {
+		utils.Logger.Error("generate token failed", zap.Error(err))
+		return param.InternalError(c, "")
+	}
 	return param.Success(c, map[string]any{
 		"token":      token,
 		"expires_in": config.Conf.Jwt.Expire,
