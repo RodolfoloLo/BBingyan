@@ -30,18 +30,13 @@ func GenerateToken(uid, perm int) (string, error) {
 		SignedString([]byte(config.Conf.Jwt.Secret))
 }
 
-func ParseToken(raw string) (*Claims, error) {
-	claims := &Claims{}
-	_, err := jwt.ParseWithClaims(raw, claims, func(t *jwt.Token) (any, error) {
-		return []byte(config.Conf.Jwt.Secret), nil
-	})
-	return claims, err
-}
-
 func InitJWT(e *echo.Echo) {
 	e.Use(echojwt.WithConfig(echojwt.Config{
 		SigningKey:  []byte(config.Conf.Jwt.Secret),
 		TokenLookup: "header:Authorization:Bearer ",
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return &Claims{}
+		},
 		Skipper: func(c echo.Context) bool {
 			path := c.Path()
 			for _, p := range config.Conf.Jwt.SkippedPaths {
@@ -58,25 +53,27 @@ func InitJWT(e *echo.Echo) {
 	}))
 }
 
+// GetUID 从 echo-jwt 已验证的 token 中取 uid（不再二次 parse）
 func GetUID(c echo.Context) int {
-	token, _ := c.Get("user").(*jwt.Token)
-	if token == nil {
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok || token == nil {
 		return -1
 	}
-	claims, err := ParseToken(token.Raw)
-	if err != nil {
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
 		return -1
 	}
 	return claims.UID
 }
 
+// GetPermission 从 echo-jwt 已验证的 token 中取权限等级
 func GetPermission(c echo.Context) int {
-	token, _ := c.Get("user").(*jwt.Token)
-	if token == nil {
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok || token == nil {
 		return 0
 	}
-	claims, err := ParseToken(token.Raw)
-	if err != nil {
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
 		return 0
 	}
 	return claims.Permission

@@ -9,11 +9,7 @@ import (
 )
 
 func CreatePost(c echo.Context) error {
-	var req struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
-		NID     int    `json:"nid"`
-	}
+	var req param.CreatePostRequest
 	if err := c.Bind(&req); err != nil {
 		return param.BadRequest(c, "")
 	}
@@ -52,9 +48,7 @@ func ListPosts(c echo.Context) error {
 }
 
 func GetPost(c echo.Context) error {
-	var req struct {
-		PID int `query:"pid"`
-	}
+	var req param.PIDQuery
 	if err := c.Bind(&req); err != nil || req.PID == 0 {
 		return param.BadRequest(c, "pid required")
 	}
@@ -67,9 +61,7 @@ func GetPost(c echo.Context) error {
 }
 
 func DeletePost(c echo.Context) error {
-	var req struct {
-		PID int `query:"pid"`
-	}
+	var req param.PIDQuery
 	if err := c.Bind(&req); err != nil || req.PID == 0 {
 		return param.BadRequest(c, "pid required")
 	}

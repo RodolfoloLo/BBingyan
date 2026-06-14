@@ -9,10 +9,7 @@ import (
 )
 
 func CreateComment(c echo.Context) error {
-	var req struct {
-		PID     int    `json:"pid"`
-		Content string `json:"content"`
-	}
+	var req param.CreateCommentRequest
 	if err := c.Bind(&req); err != nil || req.PID == 0 || req.Content == "" {
 		return param.BadRequest(c, "")
 	}
@@ -44,9 +41,7 @@ func ListCommentsByPID(c echo.Context) error {
 }
 
 func DeleteComment(c echo.Context) error {
-	var req struct {
-		CID int `query:"cid"`
-	}
+	var req param.CIDQuery
 	if err := c.Bind(&req); err != nil || req.CID == 0 {
 		return param.BadRequest(c, "cid required")
 	}

@@ -9,9 +9,7 @@ import (
 )
 
 func Like(c echo.Context) error {
-	var req struct {
-		PID int `query:"pid"`
-	}
+	var req param.PIDQuery
 	if err := c.Bind(&req); err != nil || req.PID == 0 {
 		return param.BadRequest(c, "pid required")
 	}
@@ -23,9 +21,7 @@ func Like(c echo.Context) error {
 }
 
 func Unlike(c echo.Context) error {
-	var req struct {
-		PID int `query:"pid"`
-	}
+	var req param.PIDQuery
 	if err := c.Bind(&req); err != nil || req.PID == 0 {
 		return param.BadRequest(c, "pid required")
 	}

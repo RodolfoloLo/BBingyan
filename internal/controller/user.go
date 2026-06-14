@@ -15,14 +15,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type RegisterRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
-}
-
 func Register(c echo.Context) error {
-	var req RegisterRequest
+	var req param.RegisterRequest
 	if err := c.Bind(&req); err != nil {
 		return param.BadRequest(c, "")
 	}
@@ -57,13 +51,8 @@ func Register(c echo.Context) error {
 	return param.Success(c, nil)
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func Login(c echo.Context) error {
-	var req LoginRequest
+	var req param.LoginRequest
 	if err := c.Bind(&req); err != nil {
 		return param.BadRequest(c, "")
 	}
@@ -92,10 +81,7 @@ func Login(c echo.Context) error {
 }
 
 func GetUser(c echo.Context) error {
-	var req struct {
-		ID       int    `query:"id"`
-		Username string `query:"username"`
-	}
+	var req param.UserQuery
 	c.Bind(&req)
 
 	var user *model.User
@@ -121,9 +107,7 @@ func DeleteUser(c echo.Context) error {
 	if utils.GetPermission(c) < 1 {
 		return param.Forbidden(c, "admin only")
 	}
-	var req struct {
-		ID int `query:"id"`
-	}
+	var req param.IDQuery
 	c.Bind(&req)
 	if err := model.DeleteUser(c.Request().Context(), req.ID); err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {

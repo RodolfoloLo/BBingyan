@@ -42,7 +42,7 @@ func SetCode(ctx context.Context, email, code string) error {
 	return Redis.Set(ctx, email, code, ttl).Err()
 }
 
-// ValidateCode 验证验证码是否正确
+// ValidateCode 验证验证码是否正确，匹配后立即删除防止重复使用
 func ValidateCode(ctx context.Context, email, code string) (bool, error) {
 	stored, err := Redis.Get(ctx, email).Result()
 	if err == redis.Nil {
@@ -51,7 +51,12 @@ func ValidateCode(ctx context.Context, email, code string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return stored == code, nil
+	if stored != code {
+		return false, nil
+	}
+	// 用过即删，防止同一验证码被多次使用
+	Redis.Del(ctx, email)
+	return true, nil
 }
 
 // CanResend 检查是否可以重新发送验证码

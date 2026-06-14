@@ -13,10 +13,7 @@ func CreateNode(c echo.Context) error {
 		return param.Forbidden(c, "admin only")
 	}
 
-	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
+	var req param.CreateNodeRequest
 	if err := c.Bind(&req); err != nil || req.Name == "" {
 		return param.BadRequest(c, "")
 	}
@@ -44,9 +41,7 @@ func DeleteNode(c echo.Context) error {
 		return param.Forbidden(c, "admin only")
 	}
 
-	var req struct {
-		NID int `query:"nid"`
-	}
+	var req param.NIDQuery
 	if err := c.Bind(&req); err != nil || req.NID == 0 {
 		return param.BadRequest(c, "nid required")
 	}

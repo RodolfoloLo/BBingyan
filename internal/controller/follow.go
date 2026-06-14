@@ -9,9 +9,7 @@ import (
 )
 
 func Follow(c echo.Context) error {
-	var req struct {
-		Followee int `query:"followee"`
-	}
+	var req param.FolloweeQuery
 	if err := c.Bind(&req); err != nil || req.Followee == 0 {
 		return param.BadRequest(c, "followee required")
 	}
@@ -23,9 +21,7 @@ func Follow(c echo.Context) error {
 }
 
 func Unfollow(c echo.Context) error {
-	var req struct {
-		Followee int `query:"followee"`
-	}
+	var req param.FolloweeQuery
 	if err := c.Bind(&req); err != nil || req.Followee == 0 {
 		return param.BadRequest(c, "followee required")
 	}
